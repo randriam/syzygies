@@ -1,0 +1,115 @@
+ProduitCodes := function(C1,C2)
+V := AmbientSpace(C1);
+L := [C1.i1*C2.i2: i2 in [1..Dimension(C2)], i1 in [1..Dimension(C1)]];
+return LinearCode(sub<V|L>);
+end function;
+
+CarreCode := function(C)
+V := AmbientSpace(C);
+k := Dimension(C);
+L := [C.i*C.j: j in [i..k], i in [1..k]];
+return LinearCode(sub<V|L>);
+end function;
+
+ProduitMatrices := function(M1,M2)
+L := [ElementToSequence(M1[i1]*M2[i2]): i2 in [1..Nrows(M2)], i1 in [1..Nrows(M1)]];
+return Matrix(L);
+end function;
+
+CarreMatrice := function(M: ordre:="lex")
+k := Nrows(M);
+case ordre:
+when "lex":
+L := [ElementToSequence(M[i]*M[j]): j in [i..k], i in [1..k]];
+when "lex+":
+L := [ElementToSequence(M[i]*M[j]): j in [i..k], i in [1..k]];
+when "lex-":
+L := [ElementToSequence(M[i]*M[j]): j in [k..i by -1], i in [k..1 by -1]];
+when "rlx":
+L := [ElementToSequence(M[i]*M[j]): i in [1..j], j in [1..k]];
+when "rlx+":
+L := [ElementToSequence(M[i]*M[j]): i in [1..j], j in [1..k]];
+when "rlx-":
+L := [ElementToSequence(M[i]*M[j]): i in [j..1 by -1], j in [k..1 by -1]];
+end case;
+return Matrix(L);
+end function;
+
+CubeMatrice := function(M: ordre:="lex")
+k := Nrows(M);
+case ordre:
+when "lex":
+L := [ElementToSequence(M[i1]*M[i2]*M[i3]): i3 in [i2..k], i2 in [i1..k], i1 in [1..k]];
+when "lex+":
+L := [ElementToSequence(M[i1]*M[i2]*M[i3]): i3 in [i2..k], i2 in [i1..k], i1 in [1..k]];
+when "lex-":
+L := [ElementToSequence(M[i1]*M[i2]*M[i3]): i3 in [k..i2 by -1], i2 in [k..i1 by -1], i1 in [k..1 by -1]];
+when "rlx":
+L := [ElementToSequence(M[i1]*M[i2]*M[i3]): i1 in [1..i2], i2 in [1..i3], i3 in [1..k]];
+when "rlx+":
+L := [ElementToSequence(M[i1]*M[i2]*M[i3]): i1 in [1..i2], i2 in [1..i3], i3 in [1..k]];
+when "rlx-":
+L := [ElementToSequence(M[i1]*M[i2]*M[i3]): i1 in [i2..1 by -1], i2 in [i3..1 by -1], i3 in [k..1 by -1]];
+end case;
+return Matrix(L);
+end function;
+
+PredictionQuadRelGoppa := function(q,m,t)
+e := 1 + Ceiling(Log(q,t/(q-1)^2));
+return e, ((2*e+1)*t - 2*(q-1)*q^(e-1) - 1)*t*m/2;
+end function;
+
+PredictionCarreGoppa := function(q,m,t)
+e,b12 := PredictionQuadRelGoppa(q,m,t);
+return Binomial(t*m+1,2) - b12;
+end function;
+
+PredictionQuadRelAlternant := function(q,m,t)
+e := Floor(Log(q,t-1));
+return e, ((2*e+1)*t - 2*(q^(e+1) - 1)/(q-1))*(t-1)*m/2;
+end function;
+
+PredictionCarreAlternant := function(q,m,t)
+e,b12 := PredictionQuadRelAlternant(q,m,t);
+return Binomial(t*m+1,2) - b12;
+end function;
+
+
+TestsConformite := function(C,kpred)
+F := BaseField(C);
+k := Dimension(C);
+n := Length(C);
+D := Dual(C);
+D2 := CarreCode(D);
+G := GeneratorMatrix(C);
+H := GeneratorMatrix(D);
+dimok := (k eq kpred);
+nsqdi := (Dimension(D2) eq Min(n,Binomial(k+1,2)));
+Gsyst := true;
+for i in [1..k] do
+Gsyst := Gsyst and (G[i,i] eq F!1);
+end for; 
+Hsyst := true;
+for i in [1..n-k] do
+Hsyst := Hsyst and (H[i,i] eq F!1);
+end for; 
+return dimok,nsqdi,Gsyst,Hsyst;
+end function;
+
+Ideal2 := function(G,R)
+F := BaseRing(G);
+k := NumberOfRows(G);
+assert F eq CoefficientRing(R);
+assert k eq Rank(R);
+N := NullSpace(CarreMatrice(G: ordre:="lex"));
+b12 := Dimension(N);
+I := [];
+if (b12 ge 1) then
+k2 := Binomial(k+1,2);
+M2 := [R.i*R.j: j in [i..k], i in [1..k]];
+for i in [1..b12] do
+Append(~I,&+[ElementToSequence(N.i)[j]*M2[j]: j in [1..k2]]);
+end for;
+end if;
+return I;
+end function;

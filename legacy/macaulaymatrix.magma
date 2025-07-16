@@ -1,0 +1,50 @@
+MacaulayMatrix23 := function(R,L)
+F := CoefficientRing(R);
+k := Rank(R);
+B3 := [R.i1*R.i2*R.i3: i3 in [i2..k], i2 in [i1..k], i1 in [1..k]];
+n := #L;
+M := ZeroMatrix(F,k*n,#B3);
+for i in [1..n] do
+cf,mf := CoefficientsAndMonomials(L[i]);
+for j in [1..k] do
+for t in [1..#mf] do
+M[(i-1)*k+j,Index(B3,mf[t]*R.j)] := cf[t];
+end for;
+end for;
+end for;
+return M;
+end function;
+
+TrieMatrice := function(M)
+//ReverseColumns(~M);
+L := Rows(M);
+L := [ ElementToSequence(l): l in L ];
+Sort(~L);
+M := Matrix(L);
+//ReverseColumns(~M);
+return M;
+end function;
+
+MacaulayRaccourcie := function(R,L,T)
+F := CoefficientRing(R);
+k := Rank(R);
+B2 := [R.i1*R.i2: i2 in [i1..k], i1 in [1..k]];
+B3 := [R.i1*R.i2*R.i3: i3 in [i2..k], i2 in [i1..k], i1 in [1..k]];
+T := Index(B3,T); 
+n := #L;
+M := ZeroMatrix(F,k*n,#B3);
+l := 0;
+for i in [1..n] do
+cf,mf := CoefficientsAndMonomials(L[i]);
+minf := Min([Index(B2,mf[t]): t in [1..#mf]]);
+for j in [1..k] do
+if Index(B3,B2[minf]*R.j) ge T then
+l := l+1;
+for t in [1..#mf] do
+M[l,Index(B3,mf[t]*R.j)] := cf[t];
+end for;
+end if;
+end for;
+end for;
+return SubmatrixRange(M,1,T,l,#B3);
+end function;

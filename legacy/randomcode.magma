@@ -1,0 +1,117 @@
+RandomCodePrimal := function(F,n,k: type:="generique")
+
+if (k le 0) or (k ge n) then
+error "k not in ]0,n[";
+end if;
+
+case type:
+
+when "generique":
+repeat
+C := LinearCode(RandomMatrix(F,k,n));
+until Dimension(C) eq k; 
+return C;
+
+when "plein":
+repeat
+V := VectorSpace(F,k);
+L := [];
+for i in [1..n] do
+repeat
+v := Random(V);
+until v ne V!0;
+Append(~L,v);
+end for;
+C := LinearCode(Transpose(Matrix(L)));
+until Dimension(C) eq k; 
+return C;
+
+when "projectif":
+q := #F;
+if n gt (q^k-1)/(q-1) then
+error "n > (q^k-1)/(q-1)";
+end if;
+repeat
+V := VectorSpace(F,k);
+L := [];
+Lext := { V!0 };
+for i in [1..n] do
+repeat
+v := Random(V);
+until v notin Lext;
+Append(~L,v);
+for x in F do
+Include(~Lext,x*v);
+end for;
+end for;
+C := LinearCode(Transpose(Matrix(L)));
+until Dimension(C) eq k; 
+return C;
+
+when "systematique":
+return LinearCode(HorizontalJoin(ScalarMatrix(F,k,1),RandomMatrix(F,k,n-k)));
+
+when "systbiplein":
+V := VectorSpace(F,k);
+L := [];
+for i in [1..n-k] do
+repeat
+v := Random(V);
+until v ne V!0;
+Append(~L,v);
+end for;
+M := Transpose(Matrix(L));
+V := VectorSpace(F,n-k);
+for i in [1..k] do
+if M[i] eq V!0 then
+repeat
+v := Random(V);
+until v ne V!0;
+M[i] := v;
+end if;
+end for;
+return LinearCode(HorizontalJoin(ScalarMatrix(F,k,1),M));
+return C;
+
+end case;
+end function;
+
+
+RandomCode := function(F,n,k: type:="generique")
+if Substring(type,1,4) eq "dual"
+then
+return Dual(RandomCodePrimal(F,n,n-k: type:=Substring(type,5,#type-4)));
+else
+return RandomCodePrimal(F,n,k: type:=type);
+end if;
+end function;
+
+GenGoppaLikeCode := function(F,n,m,r: type:="Goppa",protectrng:=true)
+// protectrng: ne pas faire avancer le generateur d'alea avec la construction du groupe symetrique ni avec le calcul du polynome minimal
+if type in {"alternant", "Goppa"}
+then
+if protectrng then s,c := GetSeed(); end if;
+G := Sym(n);
+if protectrng then SetSeed(s,c); end if;
+K := ext<F|m>;
+S := Setseq(RandomSubset(Set(K),n));
+p := Random(G);
+S := [S[i^p]: i in [1..n]];
+case type:
+when "alternant":
+Y := [Random(Set(K) diff {K!0}): i in [1..n]];
+return AlternantCode(S,Y,r,F),S,Y,r,F;
+when "Goppa":
+L := ext<K|r>;
+repeat
+z := Random(L);
+if protectrng then s,c := GetSeed(); end if;
+g := MinimalPolynomial(z,K);
+if protectrng then SetSeed(s,c); end if;
+until Degree(g) eq r;
+return GoppaCode(S,g),S,g;
+end case;
+else
+return RandomCode(F,n,n-m*r: type:=type);
+end if;
+end function;

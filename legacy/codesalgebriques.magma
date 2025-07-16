@@ -1,0 +1,31 @@
+MatricePariteStandardAlternant := function(S,Y,t,F)
+K := Parent(S[1]);
+m := Degree(K,F);
+q := #F;
+n := #S;
+L := [];
+for u in [0..m-1] do
+L := L cat [[(S[j]^i*Y[j])^(q^u): j in [1..n]]: i in [0..t-1]];
+end for;
+return Matrix(L);
+end function;
+
+
+MatricePariteStandardGoppa := function(S,g: F:=PrimeField(Parent(S[1])))
+K := Parent(S[1]);
+m := Degree(K,F);
+q := #F;
+t := Degree(g);
+L := [];
+for u in [0..m-1] do
+L := L cat [[(s^i/Evaluate(g,s))^(q^u): s in S]: i in [0..t-1]];
+end for;
+return Matrix(L);
+end function;
+
+ReduitMatrice := function(M,F);
+k := NumberOfRows(M);
+n := NumberOfColumns(M);
+E := EchelonForm(M);
+return Matrix(F,k,n,[[F!(E[i,j]): j in [1..n]]: i in [1..k]]);
+end function;

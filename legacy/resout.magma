@@ -1,0 +1,238 @@
+load "produits.magma";
+load "macaulaymatrix.magma";
+
+Resout := function(E,k:sparse:=false)
+F := CoefficientRing(E);
+R := PolynomialRing(F,k);
+B2 := [R.i1*R.i2: i2 in [i1..k], i1 in [1..k]];
+e := Dimension(E);
+N := Integers()!(Degree(E)/k);
+if sparse then
+M := SparseMatrix(F,e*k,N*Binomial(k+1,2));
+else
+M := ZeroMatrix(F,e*k,N*Binomial(k+1,2));
+end if;
+for i in [1..e] do
+v := E.i;
+for s in Support(v) do
+r := Floor((s-1)/k);
+a := ((s-1) mod k)+1;
+for b in [1..k] do
+c := (i-1)*k+b;
+d := r*Binomial(k+1,2)+Index(B2,R.a*R.b);
+M[c,d] := v[s];
+end for;
+end for;
+end for;
+return M;
+end function;
+
+Betti := function(G,u: timing:=false,memory:=false,skipcube:=false,fichier:="/dev/null",stats:=false,matrices:=false,bases:=false,sparse:=false)
+if timing then T0:=Realtime(); end if;
+if memory then m0:=GetMemoryUsage(); end if;
+F := CoefficientRing(G);
+n := NumberOfColumns(G);
+k := NumberOfRows(G);
+fprintf fichier,"n = %o, k = %o, F = %o\nG = \n%o\n",n,k,F,G;
+G2 := CarreMatrice(G);
+k2 := Rank(G2);
+if skipcube then k3 := n;
+else k3 := Rank(CubeMatrice(G)); end if;
+if (k2 lt n) then
+printf " !! k2 < n\n";
+fprintf fichier," !! k2 < n\n";
+end if;
+indices := [(j-1)*Binomial(k+1,j)-n*Binomial(k-1,j-2): j in [2..u+1]];
+printf "indices = %o\n",indices;
+fprintf fichier,"indices = %o\n",indices;
+diagramme := ZeroMatrix(Integers(),3,u);
+diagramme[1,1] := 1;
+//diagramme[2,2] := Binomial(k+1,2)-n;
+if stats then
+densite := 1;
+poids := 0;
+norm := NumberOfRows(G2)*NumberOfColumns(G2);
+if norm ne 0 then
+poids := &+[Weight(l): l in Rows(G2)];
+densite := 0.0+poids/norm;
+end if;
+printf "taille M2 = %o x %o, poids = %o, densite = %o\n",NumberOfRows(G2),NumberOfColumns(G2),poids,densite;
+fprintf fichier,"taille M2 = %o x %o, poids = %o, densite = %o\n",NumberOfRows(G2),NumberOfColumns(G2),poids,densite;
+end if;
+if matrices then
+fprintf fichier,"M2 = \n%o\n",G2;
+end if;
+R<[x]> := PolynomialRing(F,k);
+I := Ideal2(G,R);
+if timing then
+printf "[%os] ",Realtime(T0);
+fprintf fichier,"[%os] ",Realtime(T0);
+end if;
+if memory then
+mE:=Ceiling((GetMemoryUsage()-m0)/10^6);
+printf "(%oMo) ",mE;
+fprintf fichier,"(%oMo) ",mE;
+end if;
+printf "b_{1,2} = %o\n",#I;
+fprintf fichier,"b_{1,2} = %o\n",#I;
+diagramme[2,2] := #I;
+if bases then
+printf "I2 = \n%o\n",I;
+fprintf fichier,"I2 = \n%o\n",I;
+end if;
+if stats then
+dred := 1;
+poids := 0;
+nred := #I*(Binomial(k+1,2)-#I);
+if nred ne 0 then
+poids := &+[#Coefficients(P): P in I];
+dred := 0.0+(poids-#I)/norm;
+end if;
+densite := 1;
+norm := k*#I*Binomial(k+2,3);
+if norm ne 0 then
+poids := &+[#Coefficients(P): P in I];
+densite := 0.0+(k*poids)/norm;
+end if;
+printf "poids I2 = %o, densite reduite = %o\n",poids,dred;
+fprintf fichier,"poids I2 = %o, densite reduite = %o\n",poids,dred;
+printf "taille M3 = %o x %o, poids = %o, densite = %o\n",k*#I,Binomial(k+2,3),k*poids,densite;
+fprintf fichier,"taille M3 = %o x %o, poids = %o, densite = %o\n",k*#I,Binomial(k+2,3),k*poids,densite;
+end if;
+M := MacaulayMatrix23(R,I);
+if matrices then
+fprintf fichier,"M3 = \n%o\n",M;
+end if;
+delete I;
+E := NullSpace(M);
+if memory then mE:=Ceiling((GetMemoryUsage()-m0)/10^6); end if;
+delete M;
+if timing then
+printf "[%os] ",Realtime(T0);
+fprintf fichier,"[%os] ",Realtime(T0);
+end if;
+if memory then
+printf "(%oMo) ",mE;
+fprintf fichier,"(%oMo) ",mE;
+end if;
+printf "b_{2,3} = %o\n",Dimension(E);
+fprintf fichier,"b_{2,3} = %o\n",Dimension(E);
+diagramme[2,3] := Dimension(E);
+//diagramme[3,2] := diagramme[2,3]-indices[2];
+diagramme[3,2] := diagramme[2,3]-k*diagramme[2,2]+Binomial(k+2,3)-k3;
+if bases then
+smax := diagramme[2,3];
+vmax := diagramme[2,2];
+base := [[&+[(E.s)[(v-1)*k+w]*R.w: w in [1..k]] : v in [1..vmax]]: s in [1..smax]];
+printf "B_{2,3} = \n%o\n",base;
+fprintf fichier,"B_{2,3} = \n%o\n",base;
+end if;
+if u gt 3 then
+for r in [4..u] do
+if stats then
+dred := 1;
+poids := 0;
+nred := diagramme[2,r-1]*(k*diagramme[2,r-2]-diagramme[2,r-1]);
+if nred ne 0 then
+poids := &+[Weight(E.i): i in [1..diagramme[2,r-1]]];
+dred := 0.0+(poids-diagramme[2,r-1])/nred;
+end if;
+densite := 1;
+norm := k*diagramme[2,r-1]*Binomial(k+1,2)*diagramme[2,r-2];
+if norm ne 0 then
+poids := &+[Weight(E.i): i in [1..diagramme[2,r-1]]];
+densite := 0.0+(k*poids)/norm;
+end if;
+printf "poids B_{%o,%o} = %o, densite reduite = %o\n",r-2,r-1,poids,dred;
+fprintf fichier,"poids B_{%o,%o} = %o, densite reduite = %o\n",r-2,r-1,poids,dred;
+printf "taille M%o = %o x %o, poids = %o, densite = %o\n",r,k*diagramme[2,r-1],Binomial(k+1,2)*diagramme[2,r-2],k*poids,densite;
+fprintf fichier,"taille M%o = %o x %o, poids = %o, densite = %o\n",r,k*diagramme[2,r-1],Binomial(k+1,2)*diagramme[2,r-2],k*poids,densite;
+end if;
+M := Resout(E,k:sparse:=sparse);
+if matrices then
+fprintf fichier,"M%o = \n%o\n",r,M;
+end if;
+if memory then mM:=Ceiling((GetMemoryUsage()-m0)/10^6); end if;
+delete E;
+E := NullSpace(M);
+if memory then mE:=Ceiling((GetMemoryUsage()-m0)/10^6); end if;
+delete M;
+if timing then
+printf "[%os] ",Realtime(T0);
+fprintf fichier,"[%os] ",Realtime(T0);
+end if;
+if memory then
+printf "(%oMo) ",Max(mM,mE);
+fprintf fichier,"(%oMo) ",Max(mM,mE);
+end if;
+printf "b_{%o,%o} = %o\n",r-1,r,Dimension(E);
+fprintf fichier,"b_{%o,%o} = %o\n",r-1,r,Dimension(E);
+diagramme[2,r] := Dimension(E);
+diagramme[3,r-1] := diagramme[2,r]-indices[r-1];
+if bases then
+smax := diagramme[2,r];
+vmax := diagramme[2,r-1];
+base := [[&+[(E.s)[(v-1)*k+w]*R.w: w in [1..k]] : v in [1..vmax]]: s in [1..smax]];
+printf "B_{%o,%o} = \n%o\n",r-1,r,base;
+fprintf fichier,"B_{%o,%o} = \n%o\n",r-1,r,base;
+end if;
+end for;
+end if;
+if (u ge k) then
+diagramme[3,u] := -indices[u];
+else diagramme[3,u] := -1;
+end if;
+//printf "%o\n",diagramme;
+fprintf fichier,"%o\n",diagramme;
+return diagramme;
+end function;
+
+Beta23Raccourcis := function(G,rmin,rmax)
+F := BaseRing(G);
+G0 := EchelonForm(G);
+k := NumberOfRows(G);
+n := NumberOfColumns(G);
+rmin := Max(rmin+1,1);
+rmax := Min(rmax+1,k-2);
+liste := [];
+for r in [rmin..rmax] do
+n0 := Min(Support(G0[r]));
+G := SubmatrixRange(G0,r,n0,k,n);
+R := PolynomialRing(F,k-r+1);
+I := Ideal2(G,R);
+M := MacaulayMatrix23(R,I);
+Append(~liste,Dimension(NullSpace(M)));
+end for;
+return liste;
+end function;
+
+BettiRaccourcis := function(G,u,rmin,rmax);
+G0 := EchelonForm(G);
+k := NumberOfRows(G);
+n := NumberOfColumns(G);
+rmin := Max(rmin+1,1);
+rmax := Min(rmax+1,k-2);
+liste := [* *];
+for r in [rmin..rmax] do
+n0 := Min(Support(G0[r]));
+G := SubmatrixRange(G0,r,n0,k,n);
+Append(~liste,Betti(G,Min(u,k-r+1)));
+end for;
+return liste;
+end function;
+
+TesteRaccourcis := function(G,rmin,rmax);
+G0 := EchelonForm(G);
+k := NumberOfRows(G);
+n := NumberOfColumns(G);
+rmin := Max(rmin+1,1);
+rmax := Min(rmax+1,k-2);
+liste := [* *];
+for r in [rmin..rmax] do
+n0 := Min(Support(G0[r]));
+G := SubmatrixRange(G0,r,n0,k,n);
+Append(~liste,G);
+end for;
+return liste;
+end function;
+

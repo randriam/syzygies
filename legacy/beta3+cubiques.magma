@@ -1,0 +1,308 @@
+PredBeta3Alternant := function(q,n,m,t);
+eA := Floor(Log(q,t-1));
+if (eA lt 1)
+then
+b23 := 2*m *  Binomial(t-1,3);
+else
+b23 := 2*m * ( Binomial(t-1,3) + (t-1) * &+{ (t-q^j) * ( t-(q^j+3)/2 + (j-1)*t - q*(q^(j-1)-1)/(q-1) ) : j in {1..Floor(Log(q,t-1))} } );
+end if;
+b13 := Binomial(m*t+2,3) - m*t*Binomial(m*t+1,2) + (m*t-1)*n + b23;
+return b13,b23;
+end function;
+
+Beta3 := function(C: verb:=1,fichier:="/dev/null",ordre:="lex",ordre1:="+",ordre2:=ordre,ordre3:=ordre,tri:="tete",aux:="NA")
+/*
+verb:=-1 ecrit dans fichier
+verb:=0 pas de sortie
+verb:=1 info basiques
+verb:=2 info detaillees
+ordre:=lex ou rlx ou lex+ ou lex- ou rlx+ ou rlx-
+ordre1:=+ ou -
+ordre2:=lex ou rlx ou lex+ ou lex- ou rlx+ ou rlx-
+ordre3:=lex ou rlx ou lex+ ou lex- ou rlx+ ou rlx-
+tri:=tete ou tete+ ou tete- ou naif ou naif12+ ou naif12- ou naif21+ ou naif21-
+ si tete, ordre1 indifferent
+ si naif, ordre3 indifferent
+aux:="n= m= r= type seed c"
+*/
+n := Length(C);
+F := BaseField(C);
+D := Dual(C);
+G := GeneratorMatrix(C);
+H := GeneratorMatrix(D);
+k := Dimension(D);
+D2 := CarreCode(D);
+d2 := Dimension(D2);
+reg2 := n eq d2;
+nsqdi := (d2 eq Min(n,Binomial(k+1,2)));
+if (verb gt 0) then
+printf "\n";
+printf "reg(D)=2 ? %o\n",reg2;
+end if;
+D3 := ProduitCodes(D,D2);
+d3 := Dimension(D3);
+reg3 := n eq d3;
+if (verb gt 0) and not(reg2) then
+printf "reg(D)=3 ? %o\n",reg3;
+end if;
+if (verb gt 0) and not(reg2) then
+read abort,"abort ?";
+if (abort eq "") or (abort eq "o") or (abort eq "O") or (abort eq "y") or (abort eq "Y") then
+error "aborted";
+end if;
+end if;
+Gsyst := true;
+for i in [1..n-k] do
+Gsyst := Gsyst and (G[i,i] eq F!1);
+end for; 
+Hsyst := true;
+for i in [1..k] do
+Hsyst := Hsyst and (H[i,i] eq F!1);
+end for;
+if (verb lt 0) then
+fprintf fichier,"%o\n",aux;
+fprintf fichier,"nsqdi:%o\n",nsqdi;
+fprintf fichier,"Gsyst:%o\n",Gsyst;
+fprintf fichier,"Hsyst:%o\n",Hsyst;
+fprintf fichier,"%o %o %o %o\n",ordre1,ordre2,ordre3,tri;
+end if;
+
+H2 := CarreMatrice(H: ordre:=ordre2);
+I2 := NullSpace(H2);
+b2 := Dimension(I2);
+
+R<[x]> := PolynomialRing(F,k);
+
+case ordre2:
+when "lex":
+M2 := [x[i1]*x[i2]: i2 in [i1..k], i1 in [1..k]];
+when "lex+":
+M2 := [x[i1]*x[i2]: i2 in [i1..k], i1 in [1..k]];
+when "lex-":
+M2 := [x[i1]*x[i2]: i2 in [k..i1 by -1], i1 in [k..1 by -1]];
+when "rlx":
+M2 := [x[i1]*x[i2]: i1 in [1..i2], i2 in [1..k]];
+when "rlx+":
+M2 := [x[i1]*x[i2]: i1 in [1..i2], i2 in [1..k]];
+when "rlx-":
+M2 := [x[i1]*x[i2]: i1 in [i2..1 by -1], i2 in [k..1 by -1]];
+end case;
+
+case ordre3:
+when "lex":
+M3 := [x[i1]*x[i2]*x[i3]: i3 in [i2..k], i2 in [i1..k], i1 in [1..k]];
+when "lex+":
+M3 := [x[i1]*x[i2]*x[i3]: i3 in [i2..k], i2 in [i1..k], i1 in [1..k]];
+when "lex-":
+M3 := [x[i1]*x[i2]*x[i3]: i3 in [k..i2 by -1], i2 in [k..i1 by -1], i1 in [k..1 by -1]];
+when "rlx":
+M3 := [x[i1]*x[i2]*x[i3]: i1 in [1..i2], i2 in [1..i3], i3 in [1..k]];
+when "rlx+":
+M3 := [x[i1]*x[i2]*x[i3]: i1 in [1..i2], i2 in [1..i3], i3 in [1..k]];
+when "rlx-":
+M3 := [x[i1]*x[i2]*x[i3]: i1 in [i2..1 by -1], i2 in [i3..1 by -1], i3 in [k..1 by -1]];
+end case;
+
+k2 := Binomial(k+1,2);
+k3 := Binomial(k+2,3);
+i3 := k3-d3;
+
+Supports := [];
+for i in [1..b2] do
+f := I2.i;
+Append(~Supports,[s: s in [1..k2] | f[s] ne F!0]);
+end for;
+
+V := VectorSpace(F,k3);
+W := sub<V|[]>;
+
+intervallek3 := 2^Ceiling(Log(2,Sqrt(k3)));
+intervalleb2 := 2^Ceiling(Log(2,Sqrt(b2)));
+
+if (tri in {"tete", "tete+", "tete-"}) then 
+
+if (verb gt 0) then
+printf "\n";
+printf "Tri des produits\n";
+end if;
+if (verb gt 1) then
+printf "b2=%o\n",b2;
+end if;
+ListeProduits := [[]: u in [1..k3]];
+for i in [1..b2] do
+if (verb gt 1) and ((i mod intervalleb2) eq 0) then
+printf "%o ",i;
+end if;
+for j in [1..k] do
+u := Index(M3,M2[Supports[i][1]]*x[j]);
+Append(~ListeProduits[u],[i,j]);
+end for;
+end for;
+if (verb gt 1) then
+printf "\n";
+end if;
+
+case tri:
+when "tete":
+ustart:=k3;
+uend:=1;
+ustep:=-1;
+when "tete+":
+ustart:=k3;
+uend:=1;
+ustep:=-1;
+when "tete-":
+ustart:=1;
+uend:=k3;
+ustep:=1;
+end case;
+
+if (verb gt 0) then
+printf "\n";
+printf "Algebre lineaire\n";
+printf "b2*k=%o\n",b2*k;
+printf "k3=%o\n",k3;
+printf "i3=%o\n",i3;
+end if;
+for u in [ustart..uend by ustep] do
+L:=[];
+for paire in ListeProduits[u] do
+v:=[F!0: u in [1..k3]];
+i:=paire[1];
+j:=paire[2];
+for s in Supports[i] do
+v[Index(M3,M2[s]*x[j])]:=(I2.i)[s];
+end for;
+Append(~L,v);
+end for;
+W:=W+sub<V|L>;
+if (verb lt 0) then
+fprintf fichier,"%o %o\n",u,i3-Dimension(W);
+end if;
+if ((u-uend) mod intervallek3) eq 0
+then
+if (verb eq 1) then
+printf "%o ",u;
+end if;
+if (verb gt 1) then
+printf "u=%o, codim(W)=%o\n",u,i3-Dimension(W);
+end if;
+end if;
+end for;
+if (verb eq 1) then
+printf "\n\n";
+end if;
+if (verb gt 1) then
+printf "\n";
+end if;
+
+end if;
+
+
+case ordre1:
+when "+":
+u1start:=k;
+u1end:=1;
+u1step:=-1;
+when "-":
+u1start:=1;
+u1end:=k;
+u1step:=1;
+end case;
+
+if (tri in {"naif", "naif12+", "naif21+"}) then
+u2start:=b2;
+u2end:=1;
+u2step:=-1;
+end if;
+if tri in {"naif12-", "naif21-"} then
+u2start:=1;
+u2end:=b2;
+u2step:=1;
+end if;
+
+if (tri in {"naif", "naif21+", "naif21-"}) then
+if (verb gt 0) then
+printf "\n";
+printf "Algebre lineaire\n";
+printf "b2*k=%o\n",b2*k;
+printf "k3=%o\n",k3;
+printf "i3=%o\n",i3;
+end if;
+for u2 in [u2start..u2end by u2step] do
+for u1 in [u1start..u1end by u1step] do
+v:=[F!0: u in [1..k3]];
+for s in Supports[u2] do
+v[Index(M3,M2[s]*x[u1])]:=(I2.u2)[s];
+end for;
+W:=W+sub<V|v>;
+if (verb lt 0) then
+fprintf fichier,"%o %o %o\n",u2,u1,i3-Dimension(W);
+end if;
+end for;
+if ((u2-u2end) mod intervalleb2) eq 0
+then
+if (verb eq 1) then
+printf "%o ",u2;
+end if;
+if (verb gt 1) then
+printf "u2=%o, codim(W)=%o\n",u2,i3-Dimension(W);
+end if;
+end if;
+end for;
+if (verb eq 1) then
+printf "\n\n";
+end if;
+if (verb gt 1) then
+printf "\n";
+end if;
+end if;
+
+if (tri in {"naif12+", "naif12-"}) then
+if (verb gt 0) then
+printf "\n";
+printf "Algebre lineaire\n";
+printf "b2*k=%o\n",b2*k;
+printf "k3=%o\n",k3;
+printf "i3=%o\n",i3;
+end if;
+for u1 in [u1start..u1end by u1step] do
+for u2 in [u2start..u2end by u2step] do
+v:=[F!0: u in [1..k3]];
+for s in Supports[u2] do
+v[Index(M3,M2[s]*x[u1])]:=(I2.u2)[s];
+end for;
+W:=W+sub<V|v>;
+if (verb lt 0) then
+fprintf fichier,"%o %o %o\n",u1,u2,i3-Dimension(W);
+end if;
+end for;
+if (verb eq 1) then
+printf "%o ",u1;
+end if;
+if (verb gt 1) then
+printf "u1=%o, codim(W)=%o\n",u1,i3-Dimension(W);
+end if;
+end for;
+if (verb eq 1) then
+printf "\n\n";
+end if;
+if (verb gt 1) then
+printf "\n";
+end if;
+end if;
+
+codim:=i3-Dimension(W);
+Cubiques:=[];
+I3:=Nullspace(CubeMatrice(H:ordre:=ordre3));
+for b in Basis(I3) do
+v:=ReduceVector(W,b);
+//if ((v ne V!0) and (v notin Cubiques)) then
+if (v ne V!0) then
+W:=W+sub<V|v>;
+Append(~Cubiques,v);
+end if;
+end for;
+
+return codim,Cubiques,[&+[c[i]*M3[i]: i in [1..k3]]: c in Cubiques];
+end function;
