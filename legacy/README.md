@@ -7,7 +7,7 @@ Also, the algorithms implemented are very basic. My only aim was to quickly get 
 
 The main command is the 'Betti' command in the "resout.magma" file:
 ```
-> Betti(G,r);
+Betti(G,r);
 ```
 computes the first row of the Betti diagram of the linear code with generating matrix G, up to degree r.  
 It then completes the second row of the Betti diagram, up to degree r, pretending that the code has regularity 2. If this is not true, then this second row is just crap and should be ignored (a warning " !! k2 < n" appears).
