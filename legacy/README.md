@@ -3,7 +3,7 @@ These are the legacy scripts that I wrote while preparing my paper "The syzygy d
 Computer algebra systems such as Macaulay2, Magma, or Singular do provide commands to compute Betti numbers or minimal resolutions, but these are somehow too general and they crash even when applied to codes of very moderate parameter size.  
 This forced me to write these dedicated scripts. For some reason, I wrote them in Magma.  
 These scripts were first written only for myself, and were not planned to be shared. This explains their lack of readability, for which I should now apologize.  
-Also, the algorithms implemented are very basic. My only aim was to quickly get something that just works. Many improvements and optimizations can be devised, and actually such a project is currently under development (starting with N.Marteau and P.Perrier's internship).
+Also, the algorithms implemented are very basic. My only aim was to quickly get something that just works. Many improvements and optimizations can be devised, and actually such a project is currently under development (starting with N.Marteau and P.Perrier's internship, whose results can be found in https://github.com/piperrier/linear_strand and https://github.com/piperrier/dyztynguysher).
 
 The main command is the 'Betti' command in the "resout.magma" file:
 ```
